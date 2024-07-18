@@ -1,38 +1,65 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import { Link } from "react-router-dom";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import { db, messaging } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Dashboard from "./gerente/Dashboard";
+import { getToken, getMessaging, onMessage } from "firebase/messaging";
+import dotenv from 'dotenv';
+
+
+dotenv.config();
+
 
 const Home = () => {
   const { user } = useAuth();
-  const navigate = useNavigate(); // Obtener la función navigate
-
-  //configuracion de hooks
   const [proyectos, setProyectos] = useState([]);
-  //referencias de firebase
-  //especificamos a la base de datos la collecion a extraer
+  const [searchTerm, setSearchTerm] = useState("");
   const proyectoCollection = collection(db, "proyectos");
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const messaging = getMessaging()
+  getToken(messaging, process.env.VAPID_KEY)
 
-  //funcio para mostar todos los documentos
-  //optiene de la coleccion todos los documento dentro de la misma
-  //para despues especificar que se cargen todos los campos y el id
-  const getProyectos = async () => {
-    const data = await getDocs(proyectoCollection);
-    setProyectos(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
-  };
-
-  //uso de useEffect
   useEffect(() => {
-    getProyectos();
+    const fetchAndProcessData = async () => {
+      try {
+        const data = await getDocs(proyectoCollection);
+        const proyectosList = data.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+  
+        for (let proyecto of proyectosList) {
+          if (proyecto.estado === "Activo") {
+            const pagosCollection = collection(db, `proyectos/${proyecto.id}/pago`);
+            const pagosSnapshot = await getDocs(pagosCollection);
+            const pagos = pagosSnapshot.docs.map((doc) => doc.data());
+            const tienePagosPendientes = pagos.some(pago => pago.estado.toLowerCase() === "pendiente");
+  
+            if (tienePagosPendientes && proyecto.estado !== "Pausado") {
+              await setDoc(doc(db, "proyectos", proyecto.id), { ...proyecto, estado: "Pausado" });
+              proyecto.estado = "Pausado"; // Actualizar directamente el objeto local
+            } else if (!tienePagosPendientes && proyecto.estado !== "Activo") {
+              await setDoc(doc(db, "proyectos", proyecto.id), { ...proyecto, estado: "Activo" });
+              proyecto.estado = "Activo"; // Actualizar directamente el objeto local
+            }
+          }
+        }
+  
+        // Actualizar el estado de proyectosList después de los cambios
+        setProyectos([...proyectosList]); // Crear una nueva referencia de array
+  
+      } catch (error) {
+        console.error("Error al obtener/procesar proyectos:", error.message);
+        // Manejar el error adecuadamente, por ejemplo, mostrando un mensaje al usuario
+      }
+    };
+  
+    fetchAndProcessData(); // Llamar a la función asincrónica al montar el componente
+  
   }, []);
+  
 
   const filteredProyectos = proyectos.filter((proyecto) => {
     const searchTermLowerCase = searchTerm.toLowerCase();
-    const terminados = ["finalizado", "completado", "terminado"]; // Agrega los estados terminados que deseas filtrar
+    const terminados = ["finalizado", "completado", "terminado"];
     return (
       !terminados.includes(proyecto.estado.toLowerCase()) &&
       (proyecto.nombre.toLowerCase().includes(searchTermLowerCase) ||
@@ -44,7 +71,6 @@ const Home = () => {
     );
   });
 
-  // Función de ordenamiento personalizada
   const customSort = (a, b) => {
     if (a.estado === "Pausado" && b.estado !== "Pausado") return -1;
     if (a.estado !== "Pausado" && b.estado === "Pausado") return 1;
@@ -52,9 +78,28 @@ const Home = () => {
     if (a.estado !== "Activo" && b.estado === "Activo") return 1;
     return 0;
   };
-
-  // Ordenar los proyectos utilizando la función de ordenamiento personalizada
   const orderedProyectos = [...filteredProyectos].sort(customSort);
+
+
+
+  
+  const guardarToken = async (token) => {
+    try {
+      // Crea un documento en la colección 'tokens' con el ID del usuario
+      const tokenDocRef = doc(db, "tokens", user.uid);
+      await setDoc(tokenDocRef, { token });
+      console.log("Token almacenado correctamente en Firestore");
+    } catch (error) {
+      console.error("Error al almacenar el token en Firestore", error);
+    }
+  };
+
+  const activarMensajes = async () => {
+    onMessage(messaging, (payload) => {
+      console.log('Message received. ', payload);
+    })
+  };
+  
 
   return (
     <div className="w-full">
@@ -62,6 +107,7 @@ const Home = () => {
         <div>
           <Dashboard />
         </div>
+        <button onClick={activarMensajes}>Activar Notificaciones</button>
         <div className="absolute inset-4 -z-10 overflow-hidden mt-9">
           <svg
             className="absolute left-[max(50%,25rem)] top-2 h-[64rem] w-[128rem] -translate-x-1/2 stroke-orange-500 [mask-image:radial-gradient(64rem_64rem_at_top,white,transparent)]"

@@ -76,15 +76,24 @@ const Verdetalle = () => {
     
   }, []);
 
-  const deleteAvance = async (idProyecto, avanceId) => {
+  const deleteAvance = async (idProyecto, avanceId, archivoURL) => {
     try {
-      // Eliminar el documento de avance específico
+      // Verificar si hay un archivo para eliminar
+      if (archivoURL) {
+        // Crear una referencia al archivo en Firebase Storage
+        const fileRef = ref(storage, archivoURL);
+
+        // Borrar el archivo de Firebase Storage
+        await deleteObject(fileRef);
+        console.log("Archivo eliminado correctamente de Storage.");
+      }
+
+      // Eliminar el documento de avance específico de Firestore
       await deleteDoc(doc(db, `proyectos/${idProyecto}/avance/${avanceId}`));
-  
+      console.log("Avance eliminado correctamente de Firestore.");
+
       // Actualizar el estado de avance eliminando el avance específico
-      setAvance(avance => avance.filter(avance => avance.id !== avanceId));
-  
-      console.log("Avance eliminado correctamente.");
+      setAvance((avance) => avance.filter((avance) => avance.id !== avanceId));
     } catch (error) {
       console.error("Error al eliminar el avance:", error);
     }
@@ -303,6 +312,15 @@ const Verdetalle = () => {
                   </p>
                   <p className="font-bold text-lg ">Descripción:</p>
                   <p className="font-semibold text-sm"> {avance.descripcion}</p>
+                  <p className="font-bold text-lg ">Archivo:</p>
+                  <a
+                    href={avance.archivoURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-sm text-orange-500 underline"
+                  >
+                    Ver archivo
+                  </a>
                   <div className="d-flex justify-content-end mt-1">
                     <Link
                       to={`/EditaravanceT/${id}/${avance.id}`} // Aquí se incluyen ambos parámetros

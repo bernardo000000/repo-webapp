@@ -1,24 +1,44 @@
 import React, { useState } from "react";
 import Dashboard from "./DashboardT";
 import { collection, addDoc, doc } from "@firebase/firestore";
-import { db } from "../../firebase";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../firebase";
 import { useNavigate, useParams } from "react-router";
+import { v4 as uuidv4 } from 'uuid'; // Importamos la función v4 de uuid
 
 const CrearavanceT = () => {
   const [nombre, setNombre] = useState("");
-  const [fecha, setFecha] = useState(new Date()); // Cambiado a objeto de fecha
+  const [fecha, setFecha] = useState(new Date());
   const [descripcion, setDescripcion] = useState("");
+  const [archivo, setArchivo] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams();
+
+  const handleFileChange = (e) => {
+    setArchivo(e.target.files[0]);
+  };
 
   const store = async (e) => {
     e.preventDefault();
     try {
+      // Generamos un nombre único para el archivo si hay un archivo seleccionado
+      let fileURL = null;
+      if (archivo) {
+        const uniqueFileName = `${uuidv4()}-${archivo.name}`;
+        // Subir el archivo a Firebase Storage con el nombre único
+        const storageRef = ref(storage, `proyectos/${id}/avances/${uniqueFileName}`);
+        const snapshot = await uploadBytes(storageRef, archivo);
+        fileURL = await getDownloadURL(snapshot.ref);
+      }
+
+      // Guardar los datos del avance en Firestore
       await addDoc(collection(doc(db, "proyectos", id), "avance"), {
         nombre: nombre,
         fecha: fecha,
         descripcion: descripcion,
+        archivoURL: fileURL,
       });
+
       navigate(`/VerdetalleT/${id}`);
     } catch (error) {
       console.error("Error al almacenar el avance:", error);
@@ -59,22 +79,12 @@ const CrearavanceT = () => {
           />
         </svg>
       </div>
-      <div className=" mt-6 ">
-        <div className="w-full max-w-xl m-auto text-black ">
-          <h2 className="text-center text-5xl font-bold mb-3">
-            {" "}
-            Crear Avance:{" "}
-          </h2>
-
-          <form
-            className="bg-white shadow-md rounded px-8 pt-6 pb-6 mb-6"
-            onSubmit={store}
-          >
+      <div className="mt-6">
+        <div className="w-full max-w-xl m-auto text-black">
+          <h2 className="text-center text-5xl font-bold mb-3">Crear Avance:</h2>
+          <form className="bg-white shadow-md rounded px-8 pt-6 pb-6 mb-6" onSubmit={store}>
             <div className="mb-4">
-              <label
-                htmlFor="text"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
+              <label htmlFor="text" className="block text-gray-700 text-sm font-bold mb-2">
                 Nombre Avance:
               </label>
               <input
@@ -85,28 +95,19 @@ const CrearavanceT = () => {
                 placeholder="Ejemplo avance 1"
               />
             </div>
-
             <div className="mb-4">
-              <label
-                htmlFor="text"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
+              <label htmlFor="text" className="block text-gray-700 text-sm font-bold mb-2">
                 Fecha Avance:
               </label>
               <input
                 type="date"
-                value={fecha.toISOString().split('T')[0]} // Formatea la fecha en formato ISO
+                value={fecha.toISOString().split("T")[0]}
                 onChange={(e) => setFecha(new Date(e.target.value))}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="dia-mes-año "
               />
             </div>
-
             <div className="mb-4">
-              <label
-                htmlFor="text"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
+              <label htmlFor="text" className="block text-gray-700 text-sm font-bold mb-2">
                 Descripción Avance:
               </label>
               <textarea
@@ -114,10 +115,20 @@ const CrearavanceT = () => {
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="ejemplo: Se creo una vista"
+                placeholder="ejemplo: Se creó una vista"
               />
             </div>
-            <button className="bg-orange-400 hover:bg-orange-300 text-white  font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">
+            <div className="mb-4">
+              <label htmlFor="text" className="block text-gray-700 text-sm font-bold mb-2">
+                Archivo del Avance:
+              </label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              />
+            </div>
+            <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">
               Crear
             </button>
           </form>

@@ -1,34 +1,53 @@
 import React, { useState, useEffect } from "react";
 import Dashboard from "./Dashboard";
-import { collection, addDoc, doc, getDoc } from "@firebase/firestore";
-import { db } from "../../firebase";
+import { collection, addDoc, doc } from "@firebase/firestore";
+import { db, storage } from "../../firebase";
 import { useNavigate, useParams } from "react-router";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from "uuid";
 
 const Crearpago = () => {
-  const [monto, setMonto] = useState(0); // Cambiado a número
+  const [monto, setMonto] = useState(""); // Cambiado a cadena para manejar mejor la entrada
   const [descripcion, setDescripcion] = useState("");
   const [avance, setAvance] = useState("");
-  const [fechai, setFechai] = useState(new Date()); // Cambiado a objeto de fecha
-  const [fechav, setFechav] = useState(new Date()); // Cambiado a objeto de fecha
-  const [impuesto, setImpuesto] = useState(0); // Cambiado a número
+  const [fechai, setFechai] = useState(""); // Cambiado a cadena
+  const [fechav, setFechav] = useState(""); // Cambiado a cadena
+  const [impuesto, setImpuesto] = useState(""); // Cambiado a cadena para manejar mejor la entrada
   const [estado, setEstado] = useState("Pendiente");
+  const [archivo, setArchivo] = useState(null);
   const { id } = useParams();
   const navigate = useNavigate();
-  const estadosDePago = ["Urgente","Pendiente", "Completado"];
+  const estadosDePago = ["Pendiente", "Pagado"];
 
+  const handleFileChange = (e) => {
+    setArchivo(e.target.files[0]);
+  };
 
   const store = async (e) => {
     e.preventDefault();
     try {
+      let archivoURL = "";
+      if (archivo) {
+        const uniqueFileName = `${uuidv4()}-${archivo.name}`;
+        const storageRef = ref(storage, `proyectos/${id}/pagos/${uniqueFileName}`);
+        const snapshot = await uploadBytes(storageRef, archivo);
+        archivoURL = await getDownloadURL(snapshot.ref);
+      }
+
+      const fechaiDate = fechai ? new Date(fechai) : null;
+      const fechavDate = fechav ? new Date(fechav) : null;
+
       await addDoc(collection(doc(db, "proyectos", id), "pago"), {
-        monto: parseInt(monto), // Convertir a número entero
+        monto: parseFloat(monto), // Convertir a número decimal
         descripcion: descripcion,
         avance: avance,
-        fechav: fechav,
-        fechai: fechai,
-        impuesto: parseInt(impuesto), // Convertir a número entero
+        fechai: fechaiDate,
+        fechav: fechavDate,
+        impuesto: parseFloat(impuesto), // Convertir a número decimal
         estado: estado,
+        archivoURL: archivoURL
       });
+
       // Redirigir después de almacenar el avance
       navigate(`/Verdetalle/${id}`);
     } catch (error) {
@@ -78,7 +97,6 @@ const Crearpago = () => {
             className="bg-white shadow-md rounded px-8 pt-6 pb-6 mb-6"
             onSubmit={store}
           >
-
             <div className="mb-4">
               <label
                 htmlFor="text"
@@ -87,7 +105,7 @@ const Crearpago = () => {
                 Monto a cobrar:
               </label>
               <input
-                type="number"
+                type="text"
                 value={monto}
                 onChange={(e) => setMonto(e.target.value)}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -100,7 +118,7 @@ const Crearpago = () => {
                 htmlFor="text"
                 className="block text-gray-700 text-sm font-bold mb-2"
               >
-                Descripcion de cobro:
+                Descripción de cobro:
               </label>
               <input
                 type="text"
@@ -123,40 +141,40 @@ const Crearpago = () => {
                 value={avance}
                 onChange={(e) => setAvance(e.target.value)}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="ejemplo:realizar un corte"
+                placeholder="ejemplo: realizar un corte"
               />
             </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="text"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                Fecha creacion pago:
-              </label>
-              <input
-                type="date"
-                value={fechai.toISOString().split('T')[0]} // Formatea la fecha en formato ISO
-                onChange={(e) => setFechai(new Date(e.target.value))}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="dia-mes-año "
-              />
-            </div>
+            <div className="mb-4 flex space-x-4">
+              <div className="w-1/2">
+                <label
+                  htmlFor="text"
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                >
+                  Fecha de creación:
+                </label>
+                <input
+                  type="date"
+                  value={fechai}
+                  onChange={(e) => setFechai(e.target.value)}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                />
+              </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="text"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                Fecha de vencimiento pago:
-              </label>
-              <input
-                type="date"
-                value={fechav.toISOString().split('T')[0]} // Formatea la fecha en formato ISO
-                onChange={(e) => setFechav(new Date(e.target.value))}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="dia-mes-año "
-              />
+              <div className="w-1/2">
+                <label
+                  htmlFor="text"
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                >
+                  Fecha de vencimiento:
+                </label>
+                <input
+                  type="date"
+                  value={fechav}
+                  onChange={(e) => setFechav(e.target.value)}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                />
+              </div>
             </div>
 
             <div className="mb-4">
@@ -167,13 +185,14 @@ const Crearpago = () => {
                 Impuesto a pagar:
               </label>
               <input
-                type="number"
+                type="text"
                 value={impuesto}
                 onChange={(e) => setImpuesto(e.target.value)}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="1000 "
+                placeholder="1000"
               />
             </div>
+
             <div className="mb-4">
               <label
                 htmlFor="estadoPago"
@@ -194,7 +213,22 @@ const Crearpago = () => {
                 ))}
               </select>
             </div>
-            <button className="bg-orange-400 hover:bg-orange-300 text-white  font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">
+
+            <div className="mb-4">
+              <label
+                htmlFor="archivoPago"
+                className="block text-gray-700 text-sm font-bold mb-2"
+              >
+                Subir comprobante de pago:
+              </label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              />
+            </div>
+
+            <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">
               Crear
             </button>
           </form>
@@ -203,4 +237,5 @@ const Crearpago = () => {
     </div>
   );
 };
+
 export default Crearpago;

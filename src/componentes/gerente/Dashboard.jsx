@@ -12,7 +12,7 @@ const navigation = [
   { name: 'Clientes', href: '/Clientes', current: false },
 ]
 const userNavigation = [
-  { name: 'Cerrar Sesión',},
+  { name: 'Cerrar Sesión', href: '/Login'},
 ]
 
 function classNames(...classes) {

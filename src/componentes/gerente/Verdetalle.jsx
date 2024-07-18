@@ -8,15 +8,18 @@ import {
 } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { db } from "../../firebase";
+import { ref, deleteObject } from "firebase/storage";
+import { db, storage } from "../../firebase";
 import Dashboard from "./Dashboard";
 import { Link } from "react-router-dom";
 import PlusIcon from "@heroicons/react/24/outline/PlusIcon";
 import DescargarPDF from "./DescargarPdf";
-import ActualizarEstadosPagos  from '/src/componentes/ActualizarEstadosPagos.jsx';
+import ActualizarEstadosPagos from "/src/componentes/ActualizarEstadosPagos.jsx";
+import { Dialog, Transition } from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
+import toast, { Toaster } from "react-hot-toast";
 
 // Resto del código de Verdetalle.jsx...
-
 
 const Verdetalle = () => {
   const [proyecto, setProyecto] = useState("");
@@ -25,7 +28,9 @@ const Verdetalle = () => {
   const [pagos, setPagos] = useState([]);
   const [avance, setAvance] = useState([]);
   const [selectedEstado, setSelectedEstado] = useState("");
-  const [pageUpdated, setPageUpdated] = useState(false); // Nuevo estado para controlar si la página se ha actualizado
+  const [pageUpdated, setPageUpdated] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [modalPago, setModalPago] = useState(null);
 
   const navigate = useNavigate();
   const { id } = useParams();
@@ -42,11 +47,11 @@ const Verdetalle = () => {
           collection(db, `proyectos/${id}/acuerdo`)
         );
         if (!proyectoAcuerdoSnapshot.empty) {
-          const acuerdoProyecto = proyectoAcuerdoSnapshot.docs[0].data(); // Acceder al primer documento y obtener sus datos
+          const acuerdoProyecto = proyectoAcuerdoSnapshot.docs[0].data();
           const acuerdoConId = {
             id: proyectoAcuerdoSnapshot.docs[0].id,
             ...acuerdoProyecto,
-          }; // Agregar el ID al objeto del acuerdo
+          };
           setAcuerdo(acuerdoConId);
         } else {
           console.log("El acuerdo asociado al proyecto no existe");
@@ -61,7 +66,6 @@ const Verdetalle = () => {
         } else {
           console.log("El cliente asociado al cliente no existe");
         }
-
       } else {
         console.log("El producto no existe");
       }
@@ -100,30 +104,40 @@ const Verdetalle = () => {
     getAvanceById();
   }, [avance]);
 
-  const deleteAvance = async (idProyecto, avanceId) => {
+  const deleteAvance = async (idProyecto, avanceId, archivoURL) => {
     try {
-      // Eliminar el documento de avance específico
+      if (archivoURL) {
+        const fileRef = ref(storage, archivoURL);
+        await deleteObject(fileRef);
+        console.log("Archivo eliminado correctamente de Storage.");
+      }
+
       await deleteDoc(doc(db, `proyectos/${idProyecto}/avance/${avanceId}`));
-  
-      // Actualizar el estado de avance eliminando el avance específico
-      setAvance(avance => avance.filter(avance => avance.id !== avanceId));
-  
-      console.log("Avance eliminado correctamente.");
+      console.log("Avance eliminado correctamente de Firestore.");
+
+      setAvance((avance) => avance.filter((avance) => avance.id !== avanceId));
     } catch (error) {
       console.error("Error al eliminar el avance:", error);
     }
   };
-  const deletePago = async (idProyecto, pagoId) => {
+
+  const deletePago = async (idProyecto, pagoId, archivoURL) => {
     try {
-      // Eliminar el documento de avance específico
+      if (archivoURL) {
+        const fileRef = ref(storage, archivoURL);
+        await deleteObject(fileRef);
+        console.log("Archivo eliminado correctamente de Storage.");
+      }
+
       await deleteDoc(doc(db, `proyectos/${idProyecto}/pago/${pagoId}`));
-  
-      // Actualizar el estado de avance eliminando el avance específico
-      setAvance(pago => pago.filter(pago => pago.id !== pagoId));
-  
-      console.log("Avance eliminado correctamente.");
+      console.log("Pago eliminado correctamente de Firestore.");
+
+      setPagos((pagos) => pagos.filter((pago) => pago.id !== pagoId));
+      if (modalPago && modalPago.id === pagoId) {
+        setModalPago(null);
+      }
     } catch (error) {
-      console.error("Error al eliminar el avance:", error);
+      console.error("Error al eliminar el pago:", error);
     }
   };
 
@@ -133,11 +147,17 @@ const Verdetalle = () => {
     try {
       await updateDoc(doc(db, "proyectos", id), { estado: nuevoEstado });
       console.log("Estado del proyecto actualizado correctamente.");
+      toast.success("¡Se cambio el estado!",{
+        position:"top-center",
+        autoClose: 9000,
+        reverseOrder:false,
+      })
       setPageUpdated(true);
     } catch (error) {
       console.error("Error al actualizar el estado del proyecto:", error);
     }
   };
+
 
   useEffect(() => {
     if (pageUpdated) {
@@ -153,6 +173,30 @@ const Verdetalle = () => {
       setPageUpdated(false);
     }
   }, [pageUpdated, id]);
+
+  const handlePagoClick = (pago) => {
+    setModalPago(pago);
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".dialog-panel")) {
+        setOpen(false);
+        setModalPago(null);
+      }
+    };
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
   return (
     <div className="w-full min-h-screen">
@@ -190,7 +234,6 @@ const Verdetalle = () => {
       </div>
       <div className="flex justify-between px-4 py-4">
         <h2 className="text-4xl font-bold">Detalles {proyecto.nombre}</h2>
-        {/* seleccion de estados del Proyecto */}
         <div>
           <select
             value={selectedEstado}
@@ -202,10 +245,10 @@ const Verdetalle = () => {
             <option value="Pausado">Pausado</option>
             <option value="Terminado">Terminado</option>
           </select>
+          <Toaster />
         </div>
       </div>
 
-      {/* Detalles de los boton de crear acuerdo  */}
       {!acuerdo && (
         <div className="px-16">
           <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-1 px-2 rounded focus:outline-none focus:shadow-outlineitems-center">
@@ -217,10 +260,8 @@ const Verdetalle = () => {
         </div>
       )}
 
-      {/* Detalles del Proyecto */}
       <div className="container">
         <div className="row justify-content-center">
-          {/* Detalles del Proyecto */}
           <div className="col-md-11">
             <div className="text-black">
               <form
@@ -228,7 +269,6 @@ const Verdetalle = () => {
                 style={{ border: "3px solid orange" }}
               >
                 <div className="grid grid-cols-4 gap-x-2">
-                  {/* Datos del Proyecto */}
                   <div>
                     <h2 className="text-center text-2xl font-bold mb-2 text-orange-500">
                       Datos Proyecto:
@@ -278,7 +318,6 @@ const Verdetalle = () => {
                       </Link>
                     </div>
                   </div>
-                  {/* Datos del Cliente */}
                   <div>
                     <h2 className="text-center text-2xl font-bold mb-2 text-orange-500">
                       Datos Cliente:
@@ -322,7 +361,6 @@ const Verdetalle = () => {
                       </Link>
                     </div>
                   </div>
-                  {/* Detalles del acuerdo */}
                   <div>
                     <h2 className="text-center text-2xl font-bold mb-2 text-orange-500">
                       Acuerdo Inicial:
@@ -376,11 +414,10 @@ const Verdetalle = () => {
                         htmlFor="text"
                         className="block text-gray-700 text-md mb-1 "
                       >
-                         {proyecto.descripcion}
+                        {proyecto.descripcion}
                       </label>
                     </div>
                   </div>
-
                 </div>
               </form>
             </div>
@@ -391,78 +428,51 @@ const Verdetalle = () => {
         <DescargarPDF proyecto={proyecto} cliente={cliente} acuerdo={acuerdo} />
       </div>
 
-      {/* Detalles del Pagos y avances  */}
-
-      <div className="container-fluid px-8 py-4">
+      <div className="container py-4">
         <div className="row">
           <div className="col-md-12">
-            <div className="flex justify-between items-center px-4 mb-3">
+            <div className="flex justify-between px-2 mb-4">
               <h2 className="text-3xl font-semibold">Pagos</h2>
-              <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+              <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-2 rounded focus:outline-none focus:shadow-outline">
                 <Link to={`/Crearpago/${id}`} className="flex items-center">
                   <PlusIcon className="w-6 h-6" />
                   Pagos
                 </Link>
               </button>
             </div>
-            <div className="d-flex flex-wrap px-4 py-2">
+            <div className="d-flex flex-wrap">
               {pagos.map((pago) => (
                 <div
                   key={pago.id}
-                  className="bg-white p-3 shadow-md rounded mb-2 mr-2"
+                  className="bg-white p-2 shadow-md rounded mb-2 mr-2"
                   style={{ maxWidth: "220px", border: "3px solid orange" }}
+                  onClick={() => handlePagoClick(pago)}
                 >
                   <p className="font-bold text-lg">Descripcion de pago:</p>
                   <p className="font-semibold text-sm"> {pago.descripcion}</p>
-                  <p className="font-bold text-lg">Monto a cobrar:</p>
-                  <p className="font-semibold text-sm"> {pago.monto}</p>
-                  <p className="font-bold text-lg">Avance a tener:</p>
-                  <p className="font-semibold text-sm"> {pago.avance}</p>
-                  <p className="font-bold text-lg"> Impuesto a pagar: </p>
-                  <p className="font-semibold text-sm"> {pago.impuesto} </p>
-                  <p className="font-bold text-lg"> Fecha inicio:</p>
-                  <p className="font-semibold text-sm">
-                    {pago.fechai.toDate().toLocaleDateString()}
-                  </p>
                   <p className="font-bold text-lg">Fecha vencimiento: </p>
                   <p className="font-semibold text-sm">
                     {pago.fechav.toDate().toLocaleDateString()}
                   </p>
-                  <p className="font-bold text-lg">Estado:</p>
-                  <p className="font-semibold text-sm"> {pago.estado}</p>
-                  <div className="d-flex justify-content-end mt-2">
-                    <Link
-                      to={`/Editarpago/${id}/${pago.id}`}
-                      className="text-orange-500 hover:text-orange-300 text-md px-2"
-                    >
-                      Editar
-                    </Link>
-                    <button
-                      onClick={() => deletePago(id,pago.id)}
-                      className="text-red-700 hover:text-red-500 px-2 focus:outline-none focus:shadow-outline"
-                    >
-                      Borrar
-                    </button>
-                  </div>
                 </div>
               ))}
             </div>
           </div>
           <div className="col-md-12">
-            <div className="flex justify-between items-center  px-4 mb-4">
+            <div className="flex justify-between px-2 mb-4">
               <h2 className="text-3xl font-semibold">Avance Internos</h2>
-              <button className=" bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+              <button className=" bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-2 rounded focus:outline-none focus:shadow-outline">
                 <Link to={`/Crearavance/${id}`} className="flex items-center">
                   <PlusIcon className="w-6 h-6" />
                   Avances
                 </Link>
               </button>
             </div>
-            <div className="d-flex flex-wrap px-4 ">
+            <div className="d-flex flex-wrap ">
               {avance.map((avance) => (
                 <div
                   key={avance.id}
-                  className="bg-white p-3 shadow-md rounded mb-2 mr-2"
+                  className="bg-white p-2 shadow-md rounded mb-2 mr-2"
                   style={{ maxWidth: "220px", border: "3px solid orange" }}
                 >
                   <p className="font-bold text-lg">Nombre Avance:</p>
@@ -473,15 +483,29 @@ const Verdetalle = () => {
                   </p>
                   <p className="font-bold text-lg ">Descripción:</p>
                   <p className="font-semibold text-sm"> {avance.descripcion}</p>
-                  <div className="d-flex justify-content-end mt-1">
+                  <div className="flex items-center">
+                    <p className="font-bold text-lg">Archivo:</p>
+                    <a
+                      href={avance.archivoURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-md text-orange-500 underline ml-2" // Ajusta el espacio a tu gusto
+                    >
+                      Ver archivo
+                    </a>
+                  </div>
+
+                  <div className="d-flex justify-content-end mt-1">    
                     <Link
-                      to={`/Editaravance/${id}/${avance.id}`} // Aquí se incluyen ambos parámetros
+                      to={`/Editaravance/${id}/${avance.id}`}
                       className="text-orange-500 hover:text-orange-300 text-md py-2 px-2"
                     >
                       Editar
                     </Link>
                     <button
-                      onClick={() => deleteAvance(id,avance.id)}
+                      onClick={() =>
+                        deleteAvance(id, avance.id, avance.archivoURL)
+                      }
                       className="text-red-700 hover:text-red-500 py-2 px-2 focus:outline-none focus:shadow-outline"
                     >
                       Borrar
@@ -493,8 +517,148 @@ const Verdetalle = () => {
           </div>
         </div>
       </div>
+
+      {modalPago && (
+        <Transition show={open} as={React.Fragment}>
+          <Dialog
+            className="relative z-10"
+            open={open}
+            onClose={() => setOpen(false)}
+          >
+            <Transition.Child
+              as={React.Fragment}
+              enter="transition-opacity duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="transition-opacity duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-hidden">
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                  <Transition.Child
+                    as={React.Fragment}
+                    enter="transform transition duration-500 ease-in-out"
+                    enterFrom="translate-x-full"
+                    enterTo="translate-x-0"
+                    leave="transform transition duration-500 ease-in-out"
+                    leaveFrom="translate-x-0"
+                    leaveTo="translate-x-full"
+                  >
+                    <Dialog.Panel className="pointer-events-auto w-screen max-w-md dialog-panel">
+                      <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
+                        <div className="px-4 sm:px-6 flex justify-between items-center">
+                          <Dialog.Title className="text-4xl font-semibold text-orange-500">
+                            Detalles del Pago
+                          </Dialog.Title>
+                          <button
+                            type="button"
+                            className="text-orange-500 hover:text-orange-700 text-9xl "
+                            onClick={() => setOpen(false)}
+                          >
+                            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                          </button>
+                        </div>
+                        <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                          <p className="font-bold text-lg">
+                            Descripcion de pago:
+                          </p>
+                          <p className="font-semibold text-md">
+                            {modalPago.descripcion}
+                          </p>
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">
+                              Monto a cobrar:{" "}
+                            </p>
+                            <p className="font-semibold text-md ml-2">
+                              {modalPago.monto}
+                            </p>
+                          </div>
+                          <p className="font-bold text-lg">Avance a tener:</p>
+                          <p className="font-semibold text-md">
+                            {modalPago.avance}
+                          </p>
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">
+                              Impuesto a pagar{" "}
+                            </p>
+                            <p className="font-semibold text-md ml-2">
+                              {modalPago.impuesto}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">Fecha Inicio </p>
+                            <p className="font-semibold text-md ml-2">
+                              {modalPago.fechai.toDate().toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">
+                              Fecha Vencimiento{" "}
+                            </p>
+                            <p className="font-semibold text-md ml-2">
+                              {modalPago.fechav.toDate().toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">Estado: </p>
+                            <p className="font-semibold text-md ml-2">
+                              {modalPago.estado}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center">
+                            <p className="font-bold text-lg">Archivo:</p>
+                            <a
+                              href={modalPago.archivoURL}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-semibold text-md text-orange-500 underline ml-2" // Ajusta el espacio a tu gusto
+                            >
+                              Ver archivo
+                            </a>
+                          </div>
+
+                          <div className="d-flex justify-content-end mt-1">
+                            <Link
+                              to={`/Editarpago/${id}/${modalPago.id}`}
+                              className="text-orange-500 hover:text-orange-300 text-lg py-2 px-2 font-medium "
+                            >
+                              Editar
+                            </Link>
+                            <button
+                              onClick={() =>
+                                deletePago(
+                                  id,
+                                  modalPago.id,
+                                  modalPago.archivoURL
+                                )
+                              }
+                              className="text-red-700 hover:text-red-500 py-2 px-2 focus:outline-none focus:shadow-outline text-lg font-medium "
+                            >
+                              Borrar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </Dialog.Panel>
+                  </Transition.Child>
+                </div>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
+      )}
     </div>
   );
 };
 
 export default Verdetalle;
+

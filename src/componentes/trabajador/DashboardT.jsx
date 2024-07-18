@@ -2,16 +2,17 @@ import { Fragment } from 'react'
 import { Disclosure, Menu, Transition } from "@headlessui/react";
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Logout } from '@mui/icons-material';
+import logo from "../../assets/logo.jpg";
 
 import { useAuth } from "../../context/AuthContext";
 
 const navigation = [
-  { name: 'Inicio', href: '/T', current: false },
-  { name: 'Proyectos', href: '/ProyectoT', current: false },
-  { name: 'Clientes', href: '/ClientesT', current: false },
+  { name: 'Inicio', href: '/T' },
+  { name: 'Proyectos', href: '/ProyectoT' },
+  { name: 'Clientes', href: '/ClientesT' },
 ]
 const userNavigation = [
-  { name: 'Cerrar Sesión', },
+  { name: 'Cerrar Sesión', href: '/LoginT' },
 ]
 
 function classNames(...classes) {
@@ -36,7 +37,7 @@ export default function DashboardT() {
                     <div className="flex-shrink-0">
                       <img
                         className="h-8 w-8"
-                        src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
+                        src={logo}
                         alt="Your Company"
                       />
                     </div>
@@ -174,7 +175,6 @@ export default function DashboardT() {
             </>
           )}
         </Disclosure>
-
       </div>
     </>
   )

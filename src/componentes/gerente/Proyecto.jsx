@@ -28,9 +28,25 @@ const Proyecto = () => {
     getProyectos();
   }, []);
 
+  const deleteSubcollections = async (documentRef) => {
+    const subcollectionNames = ['pago', 'avance']; // Nombres de las subcolecciones a eliminar
+    const subcollectionDeletionPromises = subcollectionNames.map(async (name) => {
+      const subcollectionSnap = await getDocs(collection(documentRef, name));
+      const subcollectionDocsDeletionPromises = subcollectionSnap.docs.map(async (subDoc) => {
+        await deleteSubcollections(subDoc.ref); // Llamada recursiva para eliminar subcolecciones de las subcolecciones
+        await deleteDoc(subDoc.ref); // Eliminar el documento de la subcolección
+      });
+      await Promise.all(subcollectionDocsDeletionPromises); // Esperar a que se eliminen todos los documentos de la subcolección
+    });
+  
+    await Promise.all(subcollectionDeletionPromises); // Esperar a que se eliminen todas las subcolecciones
+  };
+  
+  
   const deleteProyecto = async (id) => {
     const productDoc = doc(db, "proyectos", id);
-    await deleteDoc(productDoc);
+    await deleteSubcollections(productDoc); // Delete all subcollections first
+    await deleteDoc(productDoc); // Then delete the document
     getProyectos();
   };
 

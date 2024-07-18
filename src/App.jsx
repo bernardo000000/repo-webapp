@@ -3,6 +3,7 @@ import { Route,Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProtectedRoute } from './componentes/ProtectedRoute.jsx';
 import ActualizarEstadosPagos from './componentes/ActualizarEstadosPagos';
+import dotenv from 'dotenv';
 
 import Home from './componentes/Home'
 import HomeT from './componentes/HomeT.jsx'
@@ -33,23 +34,24 @@ import EditaravanceT from './componentes/trabajador/EditaraavanceT.jsx';
 import ExtraT from './componentes/trabajador/ExtraT.jsx';
 
 import UserRoleRedirect from './componentes/inicio/UserRoleRedirect.jsx';
-import Servicio from './componentes/inicio/Servicio.jsx';
-import Inicio from './componentes/inicio/Inicio.jsx';
-import Quienes from './componentes/inicio/Quienes.jsx';
-import Contacto from './componentes/inicio/Contacto.jsx';
+
+import { requestForToken, onMessageListener } from './firebaseMessaging';
 
 function App() { 
   useEffect(() => {
-    // Llama a la función ActualizarEstadosPagos al iniciar la aplicación
-    ActualizarEstadosPagos();
+    requestForToken();
+  }, []);
 
-    // Ejecutar la función cada día (en milisegundos)
-    const intervaloActualizacion = 24 * 60 * 60 * 1000; // 24 horas
-    const intervalID = setInterval(ActualizarEstadosPagos, intervaloActualizacion);
+  useEffect(() => {
+    onMessageListener()
+      .then(payload => {
+        console.log('Message received. ', payload);
+        // Display the notification
+      })
+      .catch(err => console.log('failed: ', err));
+  }, []);;
 
-    // Limpiar el intervalo al desmontar el componente
-    return () => clearInterval(intervalID);
-  }, []); // Pasando un array vacío, se ejecutará solo una vez al montarse el componente
+
 
   return (
     <>
@@ -81,11 +83,7 @@ function App() {
 
           <Route path='/Login' element = {<Login />} />
           <Route path='/LoginT' element = {<LoginT />} />
-          <Route path='/Inicio' element = {<Inicio />} />
-          <Route path='/Servicio' element = {<Servicio />} />
           <Route path='/Registrarse' element = {<Registrarse />} />
-          <Route path='/Quienes' element = {<Quienes />} />
-          <Route path='/Contacto' element = {<Contacto />} />
         </Routes>
        </AuthProvider>
 

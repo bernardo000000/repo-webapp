@@ -1,16 +1,20 @@
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { db } from "../../firebase";
+import { db, storage } from "../../firebase";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import Dashboard from "./Dashboard";
-import { Link } from "react-router-dom";
+import { v4 as uuidv4 } from 'uuid';
 
 const EditarAvance = () => {
   const [nombre, setNombre] = useState("");
-  const [fecha, setFecha] = useState(new Date());
+  const [fecha, setFecha] = useState(null);
   const [descripcion, setDescripcion] = useState("");
+  const [archivo, setArchivo] = useState(null);
+  const [archivoURL, setArchivoURL] = useState("");
+  const [nuevoArchivo, setNuevoArchivo] = useState(null);
   const navigate = useNavigate();
-  const { id, avanceId } = useParams(); // Supongamos que avanceId es el ID del avance que queremos editar
+  const { id, avanceId } = useParams();
 
   const getAvance = async (id, avanceId) => {
     try {
@@ -21,6 +25,7 @@ const EditarAvance = () => {
         setNombre(data.nombre);
         setFecha(data.fecha.toDate());
         setDescripcion(data.descripcion);
+        setArchivoURL(data.archivoURL || "");
       } else {
         console.log("El avance no existe");
       }
@@ -28,27 +33,52 @@ const EditarAvance = () => {
       console.error("Error al obtener el avance:", error);
     }
   };
-  
+
+  const handleFileChange = (e) => {
+    setArchivo(e.target.files[0]);
+  };
 
   const handleUpdateAvance = async (e) => {
     e.preventDefault();
     try {
       const avanceDocRef = doc(db, `proyectos/${id}/avance`, avanceId);
-      await updateDoc(avanceDocRef, {
+      let updatedData = {
         nombre: nombre,
-        fecha: fecha,
         descripcion: descripcion,
-      });
+      };
+
+      if (fecha) {
+        updatedData.fecha = fecha;
+      }
+
+      if (nuevoArchivo) {
+        // Eliminar el archivo existente si hay uno
+        if (archivoURL) {
+          const archivoRef = ref(storage, archivoURL);
+          await deleteObject(archivoRef);
+        }
+
+        // Generar un nombre único para el nuevo archivo
+        const uniqueFileName = `${uuidv4()}_${nuevoArchivo.name}`;
+        const archivoRef = ref(storage, `proyectos/${id}/avances/${uniqueFileName}`);
+        
+        // Subir el nuevo archivo
+        await uploadBytes(archivoRef, nuevoArchivo);
+        const archivoDownloadURL = await getDownloadURL(archivoRef);
+        updatedData.archivoURL = archivoDownloadURL;
+      }
+
+      await updateDoc(avanceDocRef, updatedData);
       console.log("Avance actualizado correctamente");
       navigate(`/Verdetalle/${id}`);
     } catch (error) {
       console.error("Error al actualizar el avance:", error);
     }
   };
-  
+
   useEffect(() => {
-    getAvance(id,avanceId);
-  }, []);
+    getAvance(id, avanceId);
+  }, [id, avanceId]);
 
   return (
     <div className="w-full">
@@ -87,10 +117,8 @@ const EditarAvance = () => {
       <div className=" mt-6 ">
         <div className="w-full max-w-xl m-auto text-black ">
           <h2 className="text-center text-5xl font-bold mb-3">
-            {" "}
-            Editar Avance:{" "}
+            Editar Avance:
           </h2>
-
           <form
             className="bg-white shadow-md rounded px-8 pt-6 pb-6 mb-6"
             onSubmit={handleUpdateAvance}
@@ -120,10 +148,10 @@ const EditarAvance = () => {
               </label>
               <input
                 type="date"
-                value={fecha.toISOString().split("T")[0]} // Formatea la fecha en formato ISO
+                value={fecha ? fecha.toISOString().split("T")[0] : ""}
                 onChange={(e) => setFecha(new Date(e.target.value))}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="dia-mes-año "
+                placeholder="dia-mes-año"
               />
             </div>
 
@@ -142,6 +170,36 @@ const EditarAvance = () => {
                 placeholder="ejemplo: Se creo una vista"
               />
             </div>
+
+            {archivoURL && (
+              <div className="mb-4">
+                <label
+                  htmlFor="archivo"
+                  className="block text-gray-700 text-sm font-bold mb-2"
+                >
+                  Archivo actual:
+                </label>
+                <a href={archivoURL} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                  Ver archivo
+                </a>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label
+                htmlFor="nuevoArchivo"
+                className="block text-gray-700 text-sm font-bold mb-2"
+              >
+                Subir nuevo archivo:
+              </label>
+              <input
+                type="file"
+                id="nuevoArchivo"
+                onChange={(e) => setNuevoArchivo(e.target.files[0])}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              />
+            </div>
+
             <button className="bg-orange-400 hover:bg-orange-300 text-white  font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">
               Editar
             </button>
@@ -153,3 +211,4 @@ const EditarAvance = () => {
 };
 
 export default EditarAvance;
+

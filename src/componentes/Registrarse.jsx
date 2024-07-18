@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import imagen1 from "../assets/ser3.png";
-import logo from "../assets/logo.jpg";
-import { Dialog } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import Navbar from "./inicio/Navbar";
 
-const navigation = [
-  { name: "Inicio", href: "/Inicio" },
-  { name: "¿Quienes Somos?", href: "/Quienes" },
-  { name: "Servicio", href: "/Servicio" },
-  { name: "Contacto", href: "/Contacto" },
-];
 
 function Registrarse() {
   const { signup } = useAuth();
@@ -20,7 +12,7 @@ function Registrarse() {
   const [user, setUser] = useState({
     email: "",
     password: "",
-    role: "trabajador", // Definir el rol predeterminado como "gerente"
+    role: "colaborador", // Definir el rol predeterminado como "colaborador"
   });
 
   const [error, setError] = useState("");
@@ -30,107 +22,18 @@ function Registrarse() {
     setError("");
     try {
       await signup(user.email, user.password, user.role); // Pasar el rol al método signup
-      navigate("/Redic")
+      navigate("/Redic");
     } catch (error) {
       setError(error.message);
     }
   };
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="container">
       {error}
-      <header className="absolute inset-x-0 top-0 z-50">
-        <nav
-          className="flex items-center justify-between p-6 lg:px-8"
-          aria-label="Global"
-        >
-          <div className="flex lg:flex-1">
-            <a href="/Inicio" className="-m-1.5 p-1.5">
-              <span className="sr-only">Your Company</span>
-              <img className="h-8 w-auto" src={logo} alt="" />
-            </a>
-          </div>
-          <div className="flex lg:hidden">
-            <button
-              type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700"
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <span className="sr-only">Open main menu</span>
-              <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="hidden lg:flex lg:gap-x-12">
-            {navigation.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-sm font-semibold leading-6 text-gray-900"
-              >
-                {item.name}
-              </a>
-            ))}
-          </div>
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end">
-            <a
-              href="/Redic"
-              className="text-sm font-semibold leading-6 text-gray-900"
-            >
-              Atras <span aria-hidden="true">&rarr;</span>
-            </a>
-          </div>
-        </nav>
-        <Dialog
-          as="div"
-          className="lg:hidden"
-          open={mobileMenuOpen}
-          onClose={setMobileMenuOpen}
-        >
-          <div className="fixed inset-0 z-50" />
-          <Dialog.Panel className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
-            <div className="flex items-center justify-between">
-              <a href="/Inicio" className="-m-1.5 p-1.5">
-                <span className="sr-only">Your Company</span>
-                <img className="h-8 w-auto" src={logo} alt="" />
-              </a>
-              <button
-                type="button"
-                className="-m-2.5 rounded-md p-2.5 text-gray-700"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="sr-only">Close menu</span>
-                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="mt-6 flow-root">
-              <div className="-my-6 divide-y divide-gray-500/10">
-                <div className="space-y-2 py-6">
-                  {navigation.map((item) => (
-                    <a
-                      key={item.name}
-                      href={item.href}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                    >
-                      {item.name}
-                    </a>
-                  ))}
-                </div>
-                <div className="py-6">
-                  <a
-                    href="/Redic"
-                    className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50"
-                  >
-                    Atras
-                  </a>
-                </div>
-              </div>
-            </div>
-          </Dialog.Panel>
-        </Dialog>
-      </header>
+      <Navbar />
       <div className="row">
-      <div className="absolute inset-4 -z-10 overflow-hidden mt-9">
+        <div className="absolute inset-4 -z-10 overflow-hidden mt-9">
           <svg
             className="absolute left-[max(50%,25rem)] top-2 h-[64rem] w-[128rem] -translate-x-1/2 stroke-orange-600 [mask-image:radial-gradient(64rem_64rem_at_top,white,transparent)]"
             aria-hidden="true"
@@ -161,10 +64,7 @@ function Registrarse() {
             />
           </svg>
         </div>
-        <div className="col-md-6 mt-36">
-          <img src={imagen1} className=" max-w-4xl pt-10 " />
-        </div>
-        <div className="col-md-6 mt-40 ">
+        <div className="col-md-3 mt-32 ">
           <div className="w-full max-w-xs m-auto text-black ">
             <h2 className="text-center text-6xl font-bold mb-4">
               {" "}
@@ -216,14 +116,12 @@ function Registrarse() {
                   Rol
                 </label>
                 <select
-                  onChange={(e) =>
-                    setUser({ ...user, role: e.target.value })
-                  }
+                  onChange={(e) => setUser({ ...user, role: e.target.value })}
                   value={user.role}
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                 >
                   <option value="gerente">Gerente</option>
-                  <option value="trabajador">Trabajador</option>
+                  <option value="colaborador">Colaborador</option>
                 </select>
               </div>
 
@@ -231,13 +129,10 @@ function Registrarse() {
                 Regístrate
               </button>
             </form>
-            <p className="my-4 text-sm flex justify-between px-3">
-              ¿Ya tienes cuenta?
-              <Link to="/login" className="text-orange-600 hover:text-orange-400">
-                Inicia Sesión
-              </Link>
-            </p>
           </div>
+        </div>
+        <div className="col-md-9 mt-36">
+          <img src={imagen1} className=" max-auto pt-6 " />
         </div>
       </div>
     </div>
