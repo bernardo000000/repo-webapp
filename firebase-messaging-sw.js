@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app";
-import { getMessaging } from "firebase/messaging/sw";
+importScripts('https://www.gstatic.com/firebasejs/8.2.9/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.2.9/firebase-messaging.js');
 
 
 const firebaseConfig = {
@@ -14,19 +14,17 @@ const firebaseConfig = {
 
 
 const app = firebase.initializeApp(firebaseConfig);
-const messaging = getMessaging(app)
+const messaging = firebase.messaging(app)
 
-messaging.onBackgroundMessage(payload =>{
-    console.log("Recibiste mensaje mientras estabas ausente");
+messaging.onBackgroundMessage(messaging, (payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  // Customize notification here
+  const notificationTitle = 'Background Message Title';
+  const notificationOptions = {
+    body: 'Background Message body.',
+    icon: '/logo.png'
+  };
 
-    const notificationTitle = payload.cotification.tittle;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: "/logo.jpg"
-    }
-
-    return self.ServiceWorkerRegistration.showNotification(
-        notificationTitle,
-        notificationOptions
-    )
-})
+  self.registration.showNotification(notificationTitle,
+    notificationOptions);
+});

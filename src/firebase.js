@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage";
 import { getMessaging } from 'firebase/messaging';
+import reactHotToast from 'react-hot-toast';
 
 
 const firebaseConfig = {

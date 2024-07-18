@@ -5,10 +5,9 @@ import { db, messaging } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Dashboard from "./gerente/Dashboard";
 import { getToken, getMessaging, onMessage } from "firebase/messaging";
-import dotenv from 'dotenv';
 
 
-dotenv.config();
+
 
 
 const Home = () => {
@@ -18,7 +17,22 @@ const Home = () => {
   const proyectoCollection = collection(db, "proyectos");
 
   const messaging = getMessaging()
-  getToken(messaging, process.env.VAPID_KEY)
+
+  getToken(messaging, { vapidKey: import.meta.env.VAPID_KEY }).then((currentToken) => {
+    if (currentToken) {
+      // Send the token to your server and update the UI if necessary
+      // ...
+    } else {
+      // Show permission request UI
+      console.log('No registration token available. Request permission to generate one.');
+      // ...
+    }
+  }).catch((err) => {
+    console.log('An error occurred while retrieving token. ', err);
+    // ...
+  });
+
+  //getToken(messaging, import.meta.env.PAVID_KEY)
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
@@ -45,17 +59,17 @@ const Home = () => {
   
         // Actualizar el estado de proyectosList después de los cambios
         setProyectos([...proyectosList]); // Crear una nueva referencia de array
-  
+
       } catch (error) {
         console.error("Error al obtener/procesar proyectos:", error.message);
         // Manejar el error adecuadamente, por ejemplo, mostrando un mensaje al usuario
       }
     };
-  
+
     fetchAndProcessData(); // Llamar a la función asincrónica al montar el componente
-  
+
   }, []);
-  
+
 
   const filteredProyectos = proyectos.filter((proyecto) => {
     const searchTermLowerCase = searchTerm.toLowerCase();
@@ -81,18 +95,6 @@ const Home = () => {
   const orderedProyectos = [...filteredProyectos].sort(customSort);
 
 
-
-  
-  const guardarToken = async (token) => {
-    try {
-      // Crea un documento en la colección 'tokens' con el ID del usuario
-      const tokenDocRef = doc(db, "tokens", user.uid);
-      await setDoc(tokenDocRef, { token });
-      console.log("Token almacenado correctamente en Firestore");
-    } catch (error) {
-      console.error("Error al almacenar el token en Firestore", error);
-    }
-  };
 
   const activarMensajes = async () => {
     onMessage(messaging, (payload) => {

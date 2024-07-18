@@ -3,7 +3,6 @@ import { Route,Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProtectedRoute } from './componentes/ProtectedRoute.jsx';
 import ActualizarEstadosPagos from './componentes/ActualizarEstadosPagos';
-import dotenv from 'dotenv';
 
 import Home from './componentes/Home'
 import HomeT from './componentes/HomeT.jsx'
@@ -35,23 +34,9 @@ import ExtraT from './componentes/trabajador/ExtraT.jsx';
 
 import UserRoleRedirect from './componentes/inicio/UserRoleRedirect.jsx';
 
-import { requestForToken, onMessageListener } from './firebaseMessaging';
+
 
 function App() { 
-  useEffect(() => {
-    requestForToken();
-  }, []);
-
-  useEffect(() => {
-    onMessageListener()
-      .then(payload => {
-        console.log('Message received. ', payload);
-        // Display the notification
-      })
-      .catch(err => console.log('failed: ', err));
-  }, []);;
-
-
 
   return (
     <>
