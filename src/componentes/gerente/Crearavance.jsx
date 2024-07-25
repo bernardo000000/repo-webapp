@@ -4,7 +4,8 @@ import { collection, addDoc, doc } from "@firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../firebase";
 import { useNavigate, useParams } from "react-router";
-import { v4 as uuidv4 } from 'uuid'; // Importamos la función v4 de uuid
+import { v4 as uuidv4 } from 'uuid';
+import emailjs from 'emailjs-com';
 
 const Crearavance = () => {
   const [nombre, setNombre] = useState("");
@@ -18,10 +19,27 @@ const Crearavance = () => {
     setArchivo(e.target.files[0]);
   };
 
+  const sendEmail = (fileURL) => {
+    const templateParams = {
+      nombre: nombre,
+      fecha: fecha.toISOString().split("T")[0],
+      descripcion: descripcion,
+      archivoURL: fileURL,
+      proyectoId: id
+    };
+
+    emailjs.send('service_ou3si4v', 'template_misz1cs', templateParams, 'JHgS6faDXmX8ISHRu')
+      .then((response) => {
+        console.log('Correo enviado exitosamente:', response.status, response.text);
+      }, (error) => {
+        console.error('Error al enviar el correo:', error);
+      });
+  };
+
   const store = async (e) => {
     e.preventDefault();
     try {
-      // Generamos un nombre único para el archivo si hay un archivo seleccionado
+      // Generar un nombre único para el archivo si hay un archivo seleccionado
       let fileURL = null;
       if (archivo) {
         const uniqueFileName = `${uuidv4()}-${archivo.name}`;
@@ -38,6 +56,9 @@ const Crearavance = () => {
         descripcion: descripcion,
         archivoURL: fileURL,
       });
+
+      // Enviar correo electrónico
+      sendEmail(fileURL);
 
       navigate(`/Verdetalle/${id}`);
     } catch (error) {

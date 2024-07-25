@@ -29,6 +29,55 @@ const HomeT = () => {
     getProyectos();
   }, []);
 
+
+  useEffect(() => {
+    const fetchAndProcessData = async () => {
+      try {
+        const data = await getDocs(proyectoCollection);
+        const proyectosList = data.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        }));
+
+        for (let proyecto of proyectosList) {
+          if (proyecto.estado === "Activo") {
+            const pagosCollection = collection(
+              db,
+              `proyectos/${proyecto.id}/pago`
+            );
+            const pagosSnapshot = await getDocs(pagosCollection);
+            const pagos = pagosSnapshot.docs.map((doc) => doc.data());
+            const tienePagosPendientes = pagos.some(
+              (pago) => pago.estado.toLowerCase() === "pendiente"
+            );
+
+            if (tienePagosPendientes && proyecto.estado !== "Pausado") {
+              await setDoc(doc(db, "proyectos", proyecto.id), {
+                ...proyecto,
+                estado: "Pausado",
+              });
+              proyecto.estado = "Pausado"; // Actualizar directamente el objeto local
+            } else if (!tienePagosPendientes && proyecto.estado !== "Activo") {
+              await setDoc(doc(db, "proyectos", proyecto.id), {
+                ...proyecto,
+                estado: "Activo",
+              });
+              proyecto.estado = "Activo"; // Actualizar directamente el objeto local
+            }
+          }
+        }
+
+        // Actualizar el estado de proyectosList después de los cambios
+        setProyectos([...proyectosList]); // Crear una nueva referencia de array
+      } catch (error) {
+        console.error("Error al obtener/procesar proyectos:", error.message);
+        // Manejar el error adecuadamente, por ejemplo, mostrando un mensaje al usuario
+      }
+    };
+
+    fetchAndProcessData(); // Llamar a la función asincrónica al montar el componente
+  }, []);
+
   const filteredProyectos = proyectos.filter((proyecto) => {
     const searchTermLowerCase = searchTerm.toLowerCase();
     const terminados = ["finalizado", "completado", "terminado"]; // Agrega los estados terminados que deseas filtrar

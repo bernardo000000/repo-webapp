@@ -1,19 +1,19 @@
 import React from "react";
 import Navbar from "./Navbar";
+import gerente from "../../assets/gerencia.jpg";
+import colab from "../../assets/colab.jpg";
 
 const callouts = [
   {
     name: "Gerente",
     description: "Iniciar Sesión como Gerente",
-    imageSrc:
-      "https://www.roberthalf.cl/sites/roberthalf.cl/files/styles/full_width_content_image_1x_extra_large_1036/public/2020-10/Cargos%20de%20gerencia_Qu%C3%A9%20aspectos%20destacar%20para%20llamar%20la%20atenci%C3%B3n%20del%20seleccionador.jpg?itok=B8G-ne5g",
+    imageSrc:gerente,
     href: "/Login",
   },
   {
     name: "Colaboradores",
     description: "Iniciar Sesión como Colabordor",
-    imageSrc:
-      "https://tailwindui.com/img/ecommerce-images/home-page-02-edition-01.jpg",
+    imageSrc:colab,
     href: "LoginT",
   },
 ];

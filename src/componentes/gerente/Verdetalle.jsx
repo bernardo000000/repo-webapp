@@ -14,7 +14,6 @@ import Dashboard from "./Dashboard";
 import { Link } from "react-router-dom";
 import PlusIcon from "@heroicons/react/24/outline/PlusIcon";
 import DescargarPDF from "./DescargarPdf";
-import ActualizarEstadosPagos from "/src/componentes/ActualizarEstadosPagos.jsx";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import toast, { Toaster } from "react-hot-toast";
@@ -41,7 +40,6 @@ const Verdetalle = () => {
       if (product.exists()) {
         const fetchedProyecto = product.data();
         setProyecto(fetchedProyecto);
-        ActualizarEstadosPagos();
 
         const proyectoAcuerdoSnapshot = await getDocs(
           collection(db, `proyectos/${id}/acuerdo`)
@@ -610,7 +608,7 @@ const Verdetalle = () => {
                           <div className="flex items-center">
                             <p className="font-bold text-lg">Estado: </p>
                             <p className="font-semibold text-md ml-2">
-                              {modalPago.estado}
+                            {modalPago.estado}
                             </p>
                           </div>
 

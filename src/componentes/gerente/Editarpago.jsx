@@ -10,7 +10,7 @@ import {
 } from "firebase/storage";
 import Dashboard from "./Dashboard";
 import { v4 as uuidv4 } from "uuid";
-import toast, { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from "react-hot-toast";
 
 const Editarpago = () => {
   const [monto, setMonto] = useState("");
@@ -28,18 +28,40 @@ const Editarpago = () => {
   const { id, pagoId } = useParams();
   const [selectedEstado, setSelectedEstado] = useState("");
 
+  const getProductById = async (id, pagoId) => {
+    try {
+      const pagoDocRef = doc(db, `proyectos/${id}/pago`, pagoId);
+      const pagoData = await getDoc(pagoDocRef);
+      if (pagoData.exists()) {
+        const dataso = pagoData.data();
+        setMonto(dataso.monto);
+        setDescripcion(dataso.descripcion);
+        setAvance(dataso.avance);
+        setFechaiOriginal(dataso.fechai.toDate());
+        setFechavOriginal(dataso.fechav.toDate());
+        setImpuesto(dataso.impuesto);
+        setEstado(dataso.estado);
+        setArchivoURL(dataso.archivoURL || "");
+      } else {
+        console.log("El pago no existe");
+      }
+    } catch (error) {
+      console.error("Error al obtener el pago:", error);
+    }
+  };
+
   const update = async (e) => {
     e.preventDefault();
     try {
       const pagoDocRef = doc(db, `proyectos/${id}/pago`, pagoId);
 
       // Preparar los datos para la actualización
-      const updatedData = {
-        monto,
-        descripcion,
-        avance,
-        impuesto,
-        estado,
+      let updatedData = {
+        monto: monto,
+        descripcion: descripcion,
+        avance: avance,
+        impuesto: impuesto,
+        estado: estado,
       };
 
       if (fechai) {
@@ -78,40 +100,14 @@ const Editarpago = () => {
     }
   };
 
-  const getProductById = async (id, pagoId) => {
-    try {
-      const pagoDocRef = doc(db, `proyectos/${id}/pago`, pagoId);
-      const pagoData = await getDoc(pagoDocRef);
-      const product = await getDoc(doc(db, "proyectos", id));
-      const productData = await getDoc(product);
-      const datito = productData.data();
-      selectedEstado(datito.estado);
-      selectedEstado();
-      if (pagoData.exists()) {
-        const dataso = pagoData.data();
-        setMonto(dataso.monto);
-        setDescripcion(dataso.descripcion);
-        setAvance(dataso.avance);
-        setFechaiOriginal(dataso.fechai.toDate());
-        setFechavOriginal(dataso.fechav.toDate());
-        setImpuesto(dataso.impuesto);
-        setEstado(dataso.estado);
-        setArchivoURL(dataso.archivoURL || "");
-      } else {
-        console.log("El pago no existe");
-      }
-    } catch (error) {
-      console.error("Error al obtener el pago:", error);
-    }
-  };
   const handleEstadoChange = async (e) => {
     const nuevoEstado = e.target.value;
     setSelectedEstado(nuevoEstado);
     try {
       await updateDoc(doc(db, "proyectos", id), { estado: nuevoEstado });
       console.log("Estado del proyecto actualizado correctamente.");
-      toast('Se actualizo el pago')
-      
+      toast("Se actualizo el pago");
+
       setPageUpdated(true);
     } catch (error) {
       console.error("Error al actualizar el estado del proyecto:", error);
@@ -123,7 +119,6 @@ const Editarpago = () => {
   }, [id, pagoId]);
 
   const estadosDePago = ["Pendiente", "Pagado"];
-  const estadosProyecto = ["Activo", "Pausado","Terminado"];
 
   return (
     <div className="w-full">
@@ -285,7 +280,7 @@ const Editarpago = () => {
               <select
                 id="estadoPago"
                 value={estado}
-                onChange={(e) => setEstado(e.target.value)}
+                onChange={(e) => setEstado(e.target.value)} // Asegúrate de que esto está funcionando
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               >
                 {estadosDePago.map((estado) => (
@@ -328,28 +323,6 @@ const Editarpago = () => {
                 onChange={(e) => setNuevoArchivo(e.target.files[0])}
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               />
-            </div>
-
-
-            <div className="mb-4">
-              <label
-                htmlFor="estadoPago"
-                className="block text-gray-700 text-sm font-bold mb-2"
-              >
-                Cambiar estado del Proyecto:
-              </label>
-              <select
-                id="estadoProyecto"
-                value={selectedEstado}
-                onChange={handleEstadoChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              >
-                {estadosProyecto.map((estadoP) => (
-                  <option key={estadoP} value={estadoP}>
-                    {estadoP}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <button className="bg-orange-400 hover:bg-orange-300 text-white font-bold py-2 px-3 rounded focus:outline-none focus:shadow-outline">

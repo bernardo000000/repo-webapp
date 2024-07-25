@@ -1,36 +1,35 @@
 import React, { useState, useEffect } from "react";
+import logo from "../assets/logo.jpg";
 import { Link } from "react-router-dom";
 import { collection, getDocs, doc, setDoc } from "firebase/firestore";
-import { db, messaging } from "../firebase";
-import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
 import Dashboard from "./gerente/Dashboard";
 import { getToken, getMessaging, onMessage } from "firebase/messaging";
-
-
-
-
+import toast, { Toaster } from "react-hot-toast";
 
 const Home = () => {
-  const { user } = useAuth();
   const [proyectos, setProyectos] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const proyectoCollection = collection(db, "proyectos");
 
-  const messaging = getMessaging()
+  const messaging = getMessaging();
 
-  getToken(messaging, { vapidKey: import.meta.env.VAPID_KEY }).then((currentToken) => {
-    if (currentToken) {
-      // Send the token to your server and update the UI if necessary
+  getToken(messaging, { vapidKey: import.meta.env.VAPID_KEY })
+    .then((currentToken) => {
+      if (currentToken) {
+        console.log("el token es ", currentToken);
+      } else {
+        // Show permission request UI
+        console.log(
+          "No registration token available. Request permission to generate one."
+        );
+        // ...
+      }
+    })
+    .catch((err) => {
+      console.log("An error occurred while retrieving token. ", err);
       // ...
-    } else {
-      // Show permission request UI
-      console.log('No registration token available. Request permission to generate one.');
-      // ...
-    }
-  }).catch((err) => {
-    console.log('An error occurred while retrieving token. ', err);
-    // ...
-  });
+    });
 
   //getToken(messaging, import.meta.env.PAVID_KEY)
 
@@ -38,28 +37,41 @@ const Home = () => {
     const fetchAndProcessData = async () => {
       try {
         const data = await getDocs(proyectoCollection);
-        const proyectosList = data.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
-  
+        const proyectosList = data.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        }));
+
         for (let proyecto of proyectosList) {
           if (proyecto.estado === "Activo") {
-            const pagosCollection = collection(db, `proyectos/${proyecto.id}/pago`);
+            const pagosCollection = collection(
+              db,
+              `proyectos/${proyecto.id}/pago`
+            );
             const pagosSnapshot = await getDocs(pagosCollection);
             const pagos = pagosSnapshot.docs.map((doc) => doc.data());
-            const tienePagosPendientes = pagos.some(pago => pago.estado.toLowerCase() === "pendiente");
-  
+            const tienePagosPendientes = pagos.some(
+              (pago) => pago.estado.toLowerCase() === "pendiente"
+            );
+
             if (tienePagosPendientes && proyecto.estado !== "Pausado") {
-              await setDoc(doc(db, "proyectos", proyecto.id), { ...proyecto, estado: "Pausado" });
+              await setDoc(doc(db, "proyectos", proyecto.id), {
+                ...proyecto,
+                estado: "Pausado",
+              });
               proyecto.estado = "Pausado"; // Actualizar directamente el objeto local
             } else if (!tienePagosPendientes && proyecto.estado !== "Activo") {
-              await setDoc(doc(db, "proyectos", proyecto.id), { ...proyecto, estado: "Activo" });
+              await setDoc(doc(db, "proyectos", proyecto.id), {
+                ...proyecto,
+                estado: "Activo",
+              });
               proyecto.estado = "Activo"; // Actualizar directamente el objeto local
             }
           }
         }
-  
+
         // Actualizar el estado de proyectosList después de los cambios
         setProyectos([...proyectosList]); // Crear una nueva referencia de array
-
       } catch (error) {
         console.error("Error al obtener/procesar proyectos:", error.message);
         // Manejar el error adecuadamente, por ejemplo, mostrando un mensaje al usuario
@@ -67,9 +79,7 @@ const Home = () => {
     };
 
     fetchAndProcessData(); // Llamar a la función asincrónica al montar el componente
-
   }, []);
-
 
   const filteredProyectos = proyectos.filter((proyecto) => {
     const searchTermLowerCase = searchTerm.toLowerCase();
@@ -94,22 +104,48 @@ const Home = () => {
   };
   const orderedProyectos = [...filteredProyectos].sort(customSort);
 
-
-
-  const activarMensajes = async () => {
-    onMessage(messaging, (payload) => {
-      console.log('Message received. ', payload);
-    })
-  };
-  
+  onMessage(messaging, (payload) => {
+    console.log("Message received. ", payload);
+    toast.custom((t) => (
+      <div
+        className={`${
+          t.visible ? "animate-enter" : "animate-leave"
+        } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+      >
+        <div className="flex-1 w-0 p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 pt-0.5">
+              <img className="h-10 w-10 rounded-full" src={logo} />
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {payload.notification.title}
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {payload.notification.body}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex border-l border-gray-200">
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    ));
+  });
 
   return (
     <div className="w-full">
       <div className="max-h-full">
+        <Toaster position="bottom-right" reverseOrder={true} />
         <div>
           <Dashboard />
         </div>
-        <button onClick={activarMensajes}>Activar Notificaciones</button>
         <div className="absolute inset-4 -z-10 overflow-hidden mt-9">
           <svg
             className="absolute left-[max(50%,25rem)] top-2 h-[64rem] w-[128rem] -translate-x-1/2 stroke-orange-500 [mask-image:radial-gradient(64rem_64rem_at_top,white,transparent)]"

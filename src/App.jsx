@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { Route,Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProtectedRoute } from './componentes/ProtectedRoute.jsx';
-import ActualizarEstadosPagos from './componentes/ActualizarEstadosPagos';
 
 import Home from './componentes/Home'
 import HomeT from './componentes/HomeT.jsx'
